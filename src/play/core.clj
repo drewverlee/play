@@ -46,52 +46,6 @@
     (t/register))
 
 
-;; (defn db->graph-uber
-;;   [{:keys [fk_table fk_column pk_table pk_column]}]
-;;   [(keyword fk_table) (keyword pk_table) {:fk_column fk_column :pk_column pk_column}])
-
-;; (->> (get-fk-dependencies db)
-;;      (map db->graph)
-;;      (apply uber/digraph)
-;;      (alg/bf-traverse))
-
-
-;; [{:fk_table "persons", :fk_column "father", :pk_table "persons", :pk_column "id"}
-;;  {:fk_table "dogs", :fk_column "owner", :pk_table "persons", :pk_column "id"}]
-
-;; (->> (uber/digraph [:dogs :persons] {:fk_column "owner" :pk_column "id"})
-;;      (alg/bf-traverse))
-
-
-;; (db->graph {:fk_table "persons", :fk_column "father", :pk_table "persons", :pk_column "id"})
-
-;; [:fk_table :pk_table] {:fk_column :pk_column}
-;; [:persons :persons] {:fk_column "father" :pk_column "id"}
-
-(def g (uber/graph [:a :b {:fk_column :id :pk_column :pid}]))
-
-(defn f [n m d] {:n n :m m :edge (map #(uber/attrs g %) m) :d d})
-
-;; (alg/bf-traverse (uber/graph [:a :b {:fk_column :id :pk_column :pid}]) :a :f f)
-
-;; => ({:n :a, :m {:a nil}, :d 0} {:n :b, :m {:a nil, :b :a}, :d 1})
-
-
-;; produce a insert statment and the data to insert with it.
-;; you can get attrs from uber/graphs
-;; (uber/attrs g [:a :b] [:fk_column :pk_column]) 
-;; (map #(uber/attrs g [% %1]) {:a :b})
-;; (map #(uber/attrs g %){:a :b})
-
-;; ;; NOTE create structure using honeysql
-;; http://www.chesnok.com/daily/2013/11/19/everyday-postgres-insert-with-select/comment-page-1/
-;; On edge to next node get reference and update structure
-
-
-
-
-;; ["INSERT INTO dogs (id) VALUES ((SELECT id FROM persons LIMIT ?))" 1]
-
 (defn create-insert
   [m {:keys [fk_table fk_column pk_table pk_column]}]
   (-> (insert-into fk_table)
