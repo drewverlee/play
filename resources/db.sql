@@ -20,3 +20,4 @@ CREATE table persons (
        id integer primary key,
        name varchar(40)
        )
+

@@ -13,7 +13,6 @@
   (:import [com.opentable.db.postgres.embedded EmbeddedPostgres]))
 
 
-
 (def pg (-> (EmbeddedPostgres/builder)
             .start))
 
@@ -26,7 +25,6 @@
               :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
 
 
-
 ;; (def db {:dbtype "postgresql"
 ;;          :dbname "db"
 ;;          :host "127.0.0.1"
@@ -36,15 +34,21 @@
 
 (hugsql/def-db-fns "db.sql")
 
+(.getPort pg)
+
+
 (create-persons-table db-spec)
 
-(-> {:connection-uri "jdbc:postgresql:postgres" :schema "public"}
+(def connection-uri (str "jdbc:postgresql://localhost:" (.getPort pg) "/postgres?user=postgres&password=secret"))
+
+(-> {:connection-uri connection-uri :schema "public"}
     (t/tables)
     (t/register))
 
-(defn db->graph-uber
-  [{:keys [fk_table fk_column pk_table pk_column]}]
-  [(keyword fk_table) (keyword pk_table) {:fk_column fk_column :pk_column pk_column}])
+
+;; (defn db->graph-uber
+;;   [{:keys [fk_table fk_column pk_table pk_column]}]
+;;   [(keyword fk_table) (keyword pk_table) {:fk_column fk_column :pk_column pk_column}])
 
 ;; (->> (get-fk-dependencies db)
 ;;      (map db->graph)
