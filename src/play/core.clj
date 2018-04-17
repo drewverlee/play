@@ -109,20 +109,19 @@
          reverse
          (map sql/format))))
 
-(create-insert-stmts :dogs (get-fk-dependencies db-spec))
-
-(["INSERT INTO persons (id, name) VALUES (-5565, ?)" "q5aCQ8sJBgJ663G9pYi"]
- ["INSERT INTO dogs (id, name, owner) VALUES (15558, ?, (SELECT id FROM persons LIMIT 1))" "05RD3frwUIz6Ym01ljZn"])
-
-(walk-path-and-create-insert-stmts [:dogs :persons] tables)
+;; (create-insert-stmts :dogs (get-fk-dependencies db-spec))
 
 
+(defn insert-data-for-deps
+  [db root]
+  (->> (create-insert-stmts root (get-fk-dependencies db))
+       (map #(j/execute! db %))))
+
+(insert-data-for-deps db-spec :dogs)
 
 
-
-(get-doggies db-spec)
-
-(get-persons db-spec)
+(count (get-doggies db-spec))
+(count (get-persons db-spec))
 
 ;;TODO maybe should be called get fk relationships
 (get-fk-dependencies db-spec)
