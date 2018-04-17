@@ -16,8 +16,14 @@ ORDER  BY pg_get_constraintdef(c.oid), conrelid::regclass::text, contype DESC;
 -- :name create-persons-table
 -- :command :execute
 -- :result :raw
-CREATE table persons (
-       id integer primary key,
-       name varchar(40)
-       )
+CREATE TABLE persons (
+       id serial primary key,
+       name text);
 
+-- :name create-dogs-table
+-- :command :execute
+-- :result :raw
+CREATE TABLE dogs (
+       id serial primary key,
+       name text,
+       owner integer references persons(id));
