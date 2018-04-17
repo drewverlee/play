@@ -104,30 +104,25 @@
   [coll]
   (map #(reduce-kv (fn [m k v] (assoc m k (keyword v))) {} %) coll))
 
-
-
 ;;(create-insert {:father 1 :name "joe"} {:fk_table :persons, :fk_column :father, :pk_table :persons, :pk_column :id})
 ;; (create-insert {:father 1 :name "joe"} {:fk_table :persons, :fk_column :father, :pk_table :persons, :pk_column :id})
 
-(s/def ::id int?)
-(s/def ::father int?)
-(s/def ::name string?)
-(s/def ::owner ::id)
-
-(s/def ::persons (s/keys :req-un [::id ::father ::name]))
-(s/def ::dogs (s/keys :req-un [::id ::owner ::name]))
-
-
 (s/exercise :table/dogs)
-
-(keyword (str "table/" (name :dogs)))
 
 ;; used if we wanted to spec via qualified names
 ;; (defn qualifier [n] (keyword (-> *ns* ns-name str) (name n)))
-;; (defn g [t] (first (gen/sample (s/gen (qualifier t)) 1)))
-(defn g [t] (keyword (str "table/" (name :dogs))))
+
+(defn qualifier [n] (keyword (str "table/" (name n))))
+(defn g [t] (first (gen/sample (s/gen (qualifier t)) 1)))
+
 
 ;;=> {:insert-into :persons, :values [{:father {:select [:id], :from [:persons], :limit 1}}]}
+
+
+(defn create-insert
+  [m {:keys [fk_table fk_column pk_table pk_column]}]
+  (-> (insert-into fk_table)
+      (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
 
 (defn ->inserts
   [root tables]
@@ -141,14 +136,10 @@
                              (t (group-by :fk_table (keyify tables))))))
                 []))))
 
-
-(->> tables
+(->> (get-fk-dependencies db-spec)
      (->inserts :dogs)
      flatten
      (map sql/format)
      first)
 
-(defn create-insert
-  [m {:keys [fk_table fk_column pk_table pk_column]}]
-  (-> (insert-into fk_table)
-      (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
+
