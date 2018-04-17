@@ -15,7 +15,6 @@
             )
   (:import [com.opentable.db.postgres.embedded EmbeddedPostgres]))
 
-
 (def pg (-> (EmbeddedPostgres/builder)
             .start))
 
@@ -27,36 +26,24 @@
               :user "postgres"
               :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
 
-;; (def real-db {:dbtype "postgresql"
-;;               :dbname "postgres"
-;;               :host "127.0.0.1"
-;;               :port "5439"
-;;               :user "postgres"
-;;               :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
-
 (hugsql/def-db-fns "db.sql")
 
-(create-persons-table db-spec)
-(create-dogs-table db-spec)
+(create-persons-table real-db)
+(create-dogs-table real-db)
 
 (def connection-uri (str "jdbc:postgresql://localhost:" (.getPort pg) "/postgres?user=postgres&password=secret"))
+(def real-connection-uri (str "jdbc:postgresql://localhost:5439/postgres?user=postgres&password=secret"))
 
-;; (def real-connection-uri (str "jdbc:postgresql://localhost:5439/postgres?user=postgres&password=secret"))
-
-(-> {:connection-uri connection-uri :schema "public"}
+(-> {:connection-uri real-connection-uri :schema "public"}
     (t/tables)
     (t/register))
 
-(get-fk-dependencies db-spec)
 
 (defn create-insert
   [m {:keys [fk_table fk_column pk_table pk_column]}]
   (-> (insert-into fk_table)
       (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
 
-;;(create-insert {:father 1 :name "joe"} {:fk_table :persons, :fk_column :father, :pk_table :persons, :pk_column :id})
-
-;;=> {:insert-into :persons, :values [{:father {:select [:id], :from [:persons], :limit 1}}]}
 ;; working
 (defn dfs
   ([n g] (dfs [n] #{} g))
@@ -65,24 +52,6 @@
          v (conj v n)]
      (when n
        (cons n (dfs (filterv #(not (v %)) (concat (pop nxs) (n g))) v g))))))
-
-;; (dfs :a {:a #{:b} :b #{:b}})
-
-(def tables
-  [{:fk_table "persons", :fk_column "father", :pk_table "persons", :pk_column "id"}
-   {:fk_table "dogs", :fk_column "owner", :pk_table "persons", :pk_column "id"}])
-
-
-(def tables-2
-  [{:fk_table "persons", :fk_column "father", :pk_table "persons", :pk_column "id"}
-   {:fk_table "dogs", :fk_column "owner", :pk_table "persons", :pk_column "id"}
-   {:fk_table "dogs", :fk_column "home", :pk_table "address", :pk_column "id"}])
-
-(def db
-        {"persons" {"persons" {:fk_column "father", :pk_column "id"}},
-         "dogs"    {"persons" {:fk_column "owner", :pk_column "id"},
-                    "address" {:fk_column "home", :pk_column "id"}}
-         "address" {}})
 
 (defn table->db
   [table]
@@ -104,20 +73,8 @@
   [coll]
   (map #(reduce-kv (fn [m k v] (assoc m k (keyword v))) {} %) coll))
 
-;;(create-insert {:father 1 :name "joe"} {:fk_table :persons, :fk_column :father, :pk_table :persons, :pk_column :id})
-;; (create-insert {:father 1 :name "joe"} {:fk_table :persons, :fk_column :father, :pk_table :persons, :pk_column :id})
-
-(s/exercise :table/dogs)
-
-;; used if we wanted to spec via qualified names
-;; (defn qualifier [n] (keyword (-> *ns* ns-name str) (name n)))
-
 (defn qualifier [n] (keyword (str "table/" (name n))))
 (defn g [t] (first (gen/sample (s/gen (qualifier t)) 1)))
-
-
-;;=> {:insert-into :persons, :values [{:father {:select [:id], :from [:persons], :limit 1}}]}
-
 
 (defn create-insert
   [m {:keys [fk_table fk_column pk_table pk_column]}]
@@ -140,6 +97,6 @@
      (->inserts :dogs)
      flatten
      (map sql/format)
-     first)
+     (map #(j/execute! db-spec %)))
 
-
+(get-doggies db-spec)

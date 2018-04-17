@@ -27,3 +27,8 @@ CREATE TABLE dogs (
        id serial primary key,
        name text,
        owner integer references persons(id));
+
+
+-- :name get-doggies :? :
+SELECT *
+FROM dogs;
