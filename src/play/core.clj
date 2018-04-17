@@ -45,7 +45,7 @@
       (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
 
 ;; working
-(defn dfs
+(defn graph->dfs-path
   ([n g] (dfs [n] #{} g))
   ([nxs v g]
    (let [n (peek nxs)
@@ -74,29 +74,65 @@
   (map #(reduce-kv (fn [m k v] (assoc m k (keyword v))) {} %) coll))
 
 (defn qualifier [n] (keyword (str "table/" (name n))))
-(defn g [t] (first (gen/sample (s/gen (qualifier t)) 1)))
 
-(defn create-insert
-  [m {:keys [fk_table fk_column pk_table pk_column]}]
-  (-> (insert-into fk_table)
-      (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
+(defn genarate [t] (last (gen/sample (s/gen (qualifier t)) 30)))
 
-(defn ->inserts
-  [root tables]
-  (let [db (->> tables keyify table->db)]
-    (->> db
-        db->graph
-        (dfs root)
-        (reduce (fn [c t]
-                  (conj c
-                        (map (fn [r] (create-insert (g t) r))
-                             (t (group-by :fk_table (keyify tables))))))
-                []))))
+;;TODO needs re-organizing. The args seem odd.
+(defn create-insert-stmt
+  [table-values {:keys [fk_table fk_column pk_table pk_column]}]
+  (let [select-any {(keyword (str (name fk_table) "/" (name fk_column))) {:select [pk_column] :from [pk_table] :limit 1}}]
+    (-> (insert-into fk_table)
+        (values [(merge table-values select-any)]))))
 
+(defn walk-path-and-create-insert-stmts
+  [path tables]
+  (reduce (fn [c t]
+            (conj c
+                  (let [table->fk-deps (group-by :fk_table (keyify tables))
+                        table-values (genarate t)]
+                    (if-let [fk-deps (t table->fk-deps)]
+                      (map (fn [fk-table] (create-insert-stmt table-values fk-table))
+                           fk-deps)
+                      (-> (insert-into t)
+                          (values [table-values]))))))
+          [] path))
+
+;; might need to reverse this
+(def tables (get-fk-dependencies db-spec))
+
+(walk-path-and-create-insert-stmts [:dogs :persons] tables)
+
+;; (defn ->inserts
+;;   [root tables]
+;;   (let [db (->> tables keyify table->db)]
+;;     (->> db
+;;          db->graph
+;;          (dfs root)
+;;          (reduce (fn [c t]
+;;                    (conj c
+;;                          (map (fn [r] (create-insert (g t) r))
+;;                               (t (group-by :fk_table (keyify tables))))))
+;;                  []))))
+
+;;TODO not producing insert statments for tables without fk constraints
 (->> (get-fk-dependencies db-spec)
      (->inserts :dogs)
      flatten
-     (map sql/format)
-     (map #(j/execute! db-spec %)))
+     (map sql/format))
+
 
 (get-doggies db-spec)
+
+(get-persons db-spec)
+
+(get-fk-dependencies db-spec)
+
+(def t [{:fk_table "dogs", :fk_column "owner", :pk_table "persons", :pk_column "id"}])
+
+(defn get-pk-tables-with-no-fk
+  [t]
+  (set/difference
+    (set (map :pk_table t))
+    (set (map :fk_table t))))
+
+

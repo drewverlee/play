@@ -29,6 +29,10 @@ CREATE TABLE dogs (
        owner integer references persons(id));
 
 
--- :name get-doggies :? :
+-- :name get-doggies :? :*
 SELECT *
 FROM dogs;
+
+-- :name get-persons :? :*
+SELECT *
+FROM persons;
