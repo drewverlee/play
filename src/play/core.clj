@@ -85,7 +85,7 @@
         (values [(merge table-values select-any)]))))
 
 (defn walk-path-and-create-insert-stmts
-  [path tables]
+  [tables path]
   (reduce (fn [c t]
             (conj c
                   (let [table->fk-deps (group-by :fk_table (keyify tables))
@@ -97,42 +97,32 @@
                           (values [table-values]))))))
           [] path))
 
-;; might need to reverse this
-(def tables (get-fk-dependencies db-spec))
+;; feels odd how i'm passing around tables here
+(defn create-insert-stmts
+  [root tables]
+  (let [db (->> tables keyify table->db)]
+    (->> db
+         db->graph
+         (dfs root)
+         (walk-path-and-create-insert-stmts tables)
+         flatten
+         reverse
+         (map sql/format))))
+
+(create-insert-stmts :dogs (get-fk-dependencies db-spec))
+
+(["INSERT INTO persons (id, name) VALUES (-5565, ?)" "q5aCQ8sJBgJ663G9pYi"]
+ ["INSERT INTO dogs (id, name, owner) VALUES (15558, ?, (SELECT id FROM persons LIMIT 1))" "05RD3frwUIz6Ym01ljZn"])
 
 (walk-path-and-create-insert-stmts [:dogs :persons] tables)
 
-;; (defn ->inserts
-;;   [root tables]
-;;   (let [db (->> tables keyify table->db)]
-;;     (->> db
-;;          db->graph
-;;          (dfs root)
-;;          (reduce (fn [c t]
-;;                    (conj c
-;;                          (map (fn [r] (create-insert (g t) r))
-;;                               (t (group-by :fk_table (keyify tables))))))
-;;                  []))))
 
-;;TODO not producing insert statments for tables without fk constraints
-(->> (get-fk-dependencies db-spec)
-     (->inserts :dogs)
-     flatten
-     (map sql/format))
+
 
 
 (get-doggies db-spec)
 
 (get-persons db-spec)
 
+;;TODO maybe should be called get fk relationships
 (get-fk-dependencies db-spec)
-
-(def t [{:fk_table "dogs", :fk_column "owner", :pk_table "persons", :pk_column "id"}])
-
-(defn get-pk-tables-with-no-fk
-  [t]
-  (set/difference
-    (set (map :pk_table t))
-    (set (map :fk_table t))))
-
-
