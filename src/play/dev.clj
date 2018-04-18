@@ -1,5 +1,6 @@
 (ns play.dev
-  (:require [play.core :refer :all]))
+  (:require [play.core :refer :all])
+  (:import [com.opentable.db.postgres.embedded EmbeddedPostgres]))
 
 (def pg (-> (EmbeddedPostgres/builder)
             .start))

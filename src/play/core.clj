@@ -8,9 +8,7 @@
             [clojure.java.jdbc :as j]
             [table-spec.core :as t]
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen])
-  (:import [com.opentable.db.postgres.embeded EmbeddedPostgres]))
-
+            [clojure.spec.gen.alpha :as gen]))
 
 (defn create-insert
   [m {:keys [fk_table fk_column pk_table pk_column]}]
@@ -22,8 +20,7 @@
   ([nxs v g]
    (let [n (peek nxs)
          v (conj v n)]
-     (when n
-       (cons n (dfs (filterv #(not (v %)) (concat (pop nxs) (n g))) v g))))))
+     (when n (cons n (dfs (filterv #(not (v %)) (concat (pop nxs) (n g))) v g))))))
 
 (defn table->db
   [table]
@@ -81,12 +78,7 @@
          reverse
          (map sql/format))))
 
-;; (create-insert-stmts :dogs (get-fk-dependencies db-spec))
-
-
 (defn insert-data-for-deps!
   [db root]
   (->> (create-insert-stmts root (get-fk-dependencies db))
        (map #(j/execute! db %))))
-
- 
