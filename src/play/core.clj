@@ -1,42 +1,15 @@
-(ns play
+(ns play.core
   (:require [clojure.set :as set]
-            [ubergraph.core :as uber]
-            [loom.alg :as alg]
             [hugsql.core :as hugsql]
             [honeysql.core :as sql]
             [honeysql.helpers :refer :all :as helpers]
             [honeysql-postgres.format :refer :all]
             [honeysql-postgres.helpers :refer :all]
             [clojure.java.jdbc :as j]
-
             [table-spec.core :as t]
             [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]
-            )
-  (:import [com.opentable.db.postgres.embedded EmbeddedPostgres]))
-
-(def pg (-> (EmbeddedPostgres/builder)
-            .start))
-
-(def subname (str "//localhost:" (.getPort pg) "/postgres"))
-
-(def db-spec {:classname "org.postgresql.Driver"
-              :subprotocol "postgresql"
-              :subname subname
-              :user "postgres"
-              :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
-
-(hugsql/def-db-fns "db.sql")
-
-(create-persons-table real-db)
-(create-dogs-table real-db)
-
-(def connection-uri (str "jdbc:postgresql://localhost:" (.getPort pg) "/postgres?user=postgres&password=secret"))
-(def real-connection-uri (str "jdbc:postgresql://localhost:5439/postgres?user=postgres&password=secret"))
-
-(-> {:connection-uri real-connection-uri :schema "public"}
-    (t/tables)
-    (t/register))
+            [clojure.spec.gen.alpha :as gen])
+  (:import [com.opentable.db.postgres.embeded EmbeddedPostgres]))
 
 
 (defn create-insert
@@ -44,7 +17,6 @@
   (-> (insert-into fk_table)
       (values [(merge m {fk_column {:select [pk_column] :from [pk_table] :limit 1}})])))
 
-;; working
 (defn graph->dfs-path
   ([n g] (dfs [n] #{} g))
   ([nxs v g]
@@ -112,16 +84,9 @@
 ;; (create-insert-stmts :dogs (get-fk-dependencies db-spec))
 
 
-(defn insert-data-for-deps
+(defn insert-data-for-deps!
   [db root]
   (->> (create-insert-stmts root (get-fk-dependencies db))
        (map #(j/execute! db %))))
 
-(insert-data-for-deps db-spec :dogs)
-
-
-(count (get-doggies db-spec))
-(count (get-persons db-spec))
-
-;;TODO maybe should be called get fk relationships
-(get-fk-dependencies db-spec)
+ 
